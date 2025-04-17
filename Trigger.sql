@@ -1,0 +1,38 @@
+CREATE TRIGGER DetectSalaryFraud
+ON SALARY_TRANSACTIONS
+AFTER INSERT
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  DECLARE @today DATE = GETDATE();
+
+  -- CTE to calculate salary difference using LAG
+  WITH SalaryDiffs AS (
+    SELECT 
+      S.EMP_ID,
+      S.TRANS_DATE,
+      S.AMOUNT,
+      LAG(S.AMOUNT) OVER (PARTITION BY S.EMP_ID ORDER BY S.TRANS_DATE) AS PREV_SAL
+    FROM SALARY_TRANSACTIONS S
+    WHERE S.EMP_ID IN (SELECT EMP_ID FROM INSERTED)
+  )
+
+  -- Insert spike alerts where the difference > 2000
+  INSERT INTO AUDIT_LOGS (EVENT_TYPE, EMP_ID, DETAILS, LOG_DATE)
+  SELECT 
+    'Salary Spike',
+    EMP_ID,
+    'Salary increased by ' + CAST(ABS(AMOUNT - PREV_SAL) AS NVARCHAR) + ' on ' + CAST(TRANS_DATE AS NVARCHAR),
+    @today
+  FROM SalaryDiffs
+  WHERE PREV_SAL IS NOT NULL AND ABS(AMOUNT - PREV_SAL) > 2000;
+
+END;
+
+
+
+
+--SELECT *
+--FROM AUDIT_LOGS
+--ORDER BY LOG_DATE DESC, EVENT_TYPE;

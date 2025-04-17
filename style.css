@@ -1,0 +1,12 @@
+body {
+  font-family: sans-serif;
+  padding: 2rem;
+}
+form input {
+  margin: 0.5rem;
+}
+#alerts {
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid red;
+}
